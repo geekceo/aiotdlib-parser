@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 from aiotdlib import Client, ClientSettings
-from aiotdlib.api import BaseObject, UpdateNewMessage, MessageLink
+from aiotdlib.api import BaseObject, UpdateNewMessage, MessageLink, Message, MessageSender, MessageSenderUser, User, MessageText
 from aiotdlib.client import API
 
 from datetime import datetime
@@ -18,15 +18,16 @@ chat_users_dict: dict = {}
 async def on_update_new_message(client: Client, update: UpdateNewMessage):
     chat_id = update.message.chat_id
 
-    # api field of client instance contains all TDLib functions, for example get_chat
     chat = await client.api.get_chat(chat_id)
-    logging.info(f'Message received in chat {chat.title}')
-
-    print(chat.id)
-
-    #if chat_id not in chat_users_dict.keys:
-
-    #    chat_users_dict[chat_id] = chat.chat_lists
+    replied_message_id: int
+    replied_message: Message
+    replied_user_type: MessageSender
+    replied_user: User
+    is_reply = 0
+    replied_username = '-'
+    replied_user_link = '-'
+    replied_message_link: MessageLink | str = '-'
+    replied_message_text = '-'
 
     user_data = await client.api.get_user(user_id=update.message.sender_id.user_id)
 
@@ -36,7 +37,7 @@ async def on_update_new_message(client: Client, update: UpdateNewMessage):
 
     channel_name: str = chat.title
 
-    message_link: str = await client.api.get_message_link(chat_id=chat.id, message_id=update.message.id) #f'https://t.me/c/{chat_id}/{update.message.id}'
+    message_link: MessageLink = await client.api.get_message_link(chat_id=chat.id, message_id=update.message.id) #f'https://t.me/c/{chat_id}/{update.message.id}'
 
     message_date: str = datetime.fromtimestamp(update.message.date).strftime('%d-%m-%Y %H:%M:%S')
 
@@ -50,10 +51,48 @@ async def on_update_new_message(client: Client, update: UpdateNewMessage):
 
         message_text = update.message.content.text.text
 
+        if update.message.reply_to != None:
+
+            try:
+
+                replied_message_id = update.message.reply_to.message_id
+                replied_message = await client.api.get_message(chat_id=chat.id, message_id=replied_message_id)
+
+                replied_user_type = replied_message.sender_id
+                if isinstance(replied_user_type, MessageSenderUser):
+                    replied_user = await client.api.get_user(user_id=replied_user_type.user_id)
+
+                    if isinstance(replied_message.content, MessageText):
+
+                        replied_message_text = replied_message.content.text.text
+                        replied_message_link = await client.api.get_message_link(chat_id=chat.id, message_id=replied_message_id)
+                        replied_message_link = replied_message_link.link
+
+                    else:
+
+                        raise ValueError('Message content is not text')
+
+                    print('OK')
+                    print(replied_message_text)
+
+                    try:
+
+                        replied_username = replied_user.usernames.editable_username
+                        replied_user_link = f"https://t.me/{replied_username}"
+
+                    except AttributeError:
+
+                        replied_username = f'{replied_user.first_name} {replied_user.last_name}'
+
+                    is_reply = 1
+            except Exception as e:
+
+                print(f'#### REPLY ERROR {e}')
+
         try:
 
             username = user_data.usernames.editable_username
-            user_link = f"https://t.me/{user_data.usernames.editable_username}"
+            user_link = f"https://t.me/{username}"
 
         except AttributeError:
 
@@ -62,11 +101,16 @@ async def on_update_new_message(client: Client, update: UpdateNewMessage):
         #logging.info(f'{update.message.sender_id.user_id}: {update.message.content.text.text}')
 
         ORM().write_message_data(username=username, user_link=user_link, channel_name=channel_name,
-                           message_text=message_text, message_link=message_link.link, message_date=message_date)
+                           message_text=message_text, message_link=message_link.link, message_date=message_date,
+                           is_reply=is_reply, replied_message_text=replied_message_text, replied_message_link=replied_message_link,
+                           replied_username=replied_username, replied_user_link=replied_user_link)
+        
+        is_reply = 0
 
-    except AttributeError:
+    except AttributeError as e:
 
-        ...
+        print(f'#### ERROR {e}')
+        print(replied_message_text)
 
 
 
