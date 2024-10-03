@@ -8,7 +8,7 @@ from aiotdlib.client import API
 from datetime import datetime
 
 from orm import ORM
-from api import API
+from api import API as DB_API
 
 API_ID = 25014319
 API_HASH = '3813e6baf9ab9915b08b810e9bde7b5b'
@@ -106,7 +106,7 @@ async def on_update_new_message(client: Client, update: UpdateNewMessage):
         #                   is_reply=is_reply, replied_message_text=replied_message_text, replied_message_link=replied_message_link,
         #                   replied_username=replied_username, replied_user_link=replied_user_link)
 
-        API().send_data(table_name=PHONE_NUMBER, username=username, user_link=user_link, channel_name=channel_name,
+        DB_API().send_data(table_name=PHONE_NUMBER, username=username, user_link=user_link, channel_name=channel_name,
                            message_text=message_text, message_link=message_link.link, message_date=message_date,
                            is_reply=is_reply, replied_message_text=replied_message_text, replied_message_link=replied_message_link,
                            replied_username=replied_username, replied_user_link=replied_user_link)
