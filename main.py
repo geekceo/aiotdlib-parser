@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 from aiotdlib import Client, ClientSettings
-from aiotdlib.api import BaseObject, UpdateNewMessage, MessageLink, Message, MessageSender, MessageSenderUser, User, MessageText
+from aiotdlib.api import BaseObject, UpdateNewMessage, MessageLink, Message, MessageSender, MessageSenderUser, User, MessageText, MessagePhoto
 from aiotdlib.client import API
 
 from datetime import datetime
@@ -34,6 +34,8 @@ async def on_update_new_message(client: Client, update: UpdateNewMessage):
 
     user_first_last_names: str = f"{user_data.first_name} {user_data.last_name}"
 
+    user_id = update.message.sender_id.user_id
+
     chat_id: str = str(chat.id).replace('-1001', '')
 
     channel_name: str = chat.title
@@ -50,7 +52,10 @@ async def on_update_new_message(client: Client, update: UpdateNewMessage):
 
     try:
 
-        message_text = update.message.content.text.text
+        if isinstance(update.message.content, MessageText):
+            message_text = update.message.content.text.text
+        elif isinstance(update.message.content, MessagePhoto):
+            message_text = update.message.content.caption.text
 
         if update.message.reply_to != None:
 
@@ -69,9 +74,15 @@ async def on_update_new_message(client: Client, update: UpdateNewMessage):
                         replied_message_link = await client.api.get_message_link(chat_id=chat.id, message_id=replied_message_id)
                         replied_message_link = replied_message_link.link
 
+                    elif isinstance(replied_message.content, MessagePhoto):
+
+                        replied_message_text = replied_message.content.caption.text
+                        replied_message_link = await client.api.get_message_link(chat_id=chat.id, message_id=replied_message_id)
+                        replied_message_link = replied_message_link.link
+
                     else:
 
-                        raise ValueError('Message content is not text')
+                        raise ValueError('Message content is not text or photo')
 
                     print('OK')
                     print(replied_message_text)
@@ -106,7 +117,7 @@ async def on_update_new_message(client: Client, update: UpdateNewMessage):
         #                   is_reply=is_reply, replied_message_text=replied_message_text, replied_message_link=replied_message_link,
         #                   replied_username=replied_username, replied_user_link=replied_user_link)
 
-        DB_API().send_data(table_name=PHONE_NUMBER, username=username, user_link=user_link, channel_name=channel_name,
+        DB_API().send_data(table_name=PHONE_NUMBER, username=username, user_id=user_id, user_link=user_link, channel_name=channel_name,
                            message_text=message_text, message_link=message_link.link, message_date=message_date,
                            is_reply=is_reply, replied_message_text=replied_message_text, replied_message_link=replied_message_link,
                            replied_username=replied_username, replied_user_link=replied_user_link)

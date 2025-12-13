@@ -1,0 +1,2 @@
+requests==2.31.0
+aiotdlib==0.24.3
